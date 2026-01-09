@@ -2,44 +2,48 @@
 <html lang="kn">
 <head>
 <meta charset="UTF-8">
-<title>Resonex Farmer Photo Booth</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Resonex Farmer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  padding: 12px;
   margin: 0;
-  background-image: url("Background.jpg");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  padding: 12px;
+  background: url("Background.jpg") no-repeat center/cover;
 }
 
-label {
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.form-row label {
+  width: 35%;
   font-weight: bold;
-  display: block;
-  margin-top: 10px;
-  text-align: center;
   color: yellow;
-  font-size: 15px;
+  font-size: 14px;
 }
 
-input, button {
-  width: 50%;
-  padding: 14px;
+.form-row input {
+  width: 65%;
+  padding: 10px;
   font-size: 14px;
-  margin: 6px auto;
-  display: block;
   font-weight: bold;
 }
 
 button {
+  width: 60%;
+  margin: 12px auto;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: bold;
   background: #0a7a6a;
   color: white;
   border: none;
   border-radius: 6px;
+  display: block;
 }
 
 canvas {
@@ -53,51 +57,50 @@ canvas {
 
 <body>
 
-<label>ರೈತರ ಹೆಸರು</label>
-<input id="name">
+<div class="form-row">
+  <label>ರೈತರ ಹೆಸರು</label>
+  <input id="name">
+</div>
 
-<label>ಮೊಬೈಲ್ ಸಂಖ್ಯೆ</label>
-<input id="mobile" inputmode="numeric" maxlength="10">
+<div class="form-row">
+  <label>ಮೊಬೈಲ್ ಸಂಖ್ಯೆ</label>
+  <input id="mobile" inputmode="numeric" maxlength="10">
+</div>
 
-<label>ಗ್ರಾಮ</label>
-<input id="village">
+<div class="form-row">
+  <label>ಗ್ರಾಮ</label>
+  <input id="village">
+</div>
 
-<label>ಜಿಲ್ಲೆ</label>
-<input id="district">
+<div class="form-row">
+  <label>ಜಿಲ್ಲೆ</label>
+  <input id="district">
+</div>
 
-<label>ಫೋಟೋ ಅಪ್‌ಲೋಡ್ / ಕ್ಯಾಮೆರಾ</label>
-<input type="file" id="photo" accept="image/*" capture="environment">
+<div class="form-row">
+  <label>ಫೋಟೋ</label>
+  <input type="file" id="photo" accept="image/*">
+</div>
 
 <button onclick="generate()">Preview</button>
 
 <canvas id="canvas"></canvas>
 
-<button onclick="download()" id="downloadBtn" style="display:none">
-Download
-</button>
+<button onclick="download()" id="downloadBtn" style="display:none">Download</button>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
 const banner = new Image();
-banner.src = "Background.png";
+banner.src = "BG.png";
 
-/* 🟦 Rounded rectangle photo area */
-const photoBox = {
-  x: 250,
-  y: 180,
-  w: 350,
-  h: 400,
-  r: 30
-};
+const photoBox = { x: 380, y: 170, w: 520, h: 420, r: 30 };
 
-// Mobile number validation
 document.getElementById("mobile").addEventListener("input", e => {
   e.target.value = e.target.value.replace(/\D/g, "");
 });
 
-// Rounded rectangle path
 function roundedRect(x, y, w, h, r) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -124,7 +127,6 @@ async function generate() {
     alert("ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ");
     return;
   }
-
   if (!file) {
     alert("ದಯವಿಟ್ಟು ಫೋಟೋ ಆಯ್ಕೆ ಮಾಡಿ");
     return;
@@ -137,28 +139,25 @@ async function generate() {
 
     canvas.width = banner.width;
     canvas.height = banner.height;
-
     ctx.drawImage(banner, 0, 0);
 
-    /* ===== SHADOW BEHIND PHOTO ===== */
+    /* SHADOW CARD */
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.35)";
     ctx.shadowBlur = 30;
-    ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 12;
-
     roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
     ctx.fillStyle = "#fff";
     ctx.fill();
     ctx.restore();
 
-    /* ===== PHOTO CLIP ===== */
+    /* CLIP PHOTO */
     ctx.save();
     roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
     ctx.clip();
 
     let drawX = farmerImg.width / 2;
-    let drawY = farmerImg.height / 2;
+    let drawY = farmerImg.height * 0.35; // safe portrait focus
 
     if ('FaceDetector' in window) {
       try {
@@ -169,7 +168,7 @@ async function generate() {
           drawX = box.x + box.width / 2;
           drawY = box.y + box.height / 2;
         }
-      } catch (e) {}
+      } catch {}
     }
 
     const scale = Math.max(
@@ -187,49 +186,42 @@ async function generate() {
 
     ctx.restore();
 
-    /* ===== WHITE STROKE BORDER ===== */
+    /* WHITE BORDER */
     ctx.lineWidth = 6;
-    ctx.strokeStyle = "#ffffff";
+    ctx.strokeStyle = "#fff";
     roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
     ctx.stroke();
 
-    /* ===== ORANGE TABLE ===== */
-    const startX = 700;
-    const startY = 250;
-    const rowH = 60;
-    const colW1 = 230;
-    const colW2 = 300;
+    /* FARMER DETAILS */
+    const dx = 950;
+    let dy = 260;
 
-    ctx.font = "bold 26px Arial";
-    ctx.lineWidth = 2;
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(dx - 30, dy - 55, 450, 260);
 
-    const rows = [
-      ["FARMER NAME", name],
-      ["MOBILE NO", mobile],
-      ["VILLAGE", village],
-      ["DISTRICT", district]
-    ];
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText("ಕ್ರಾಂತಿಕಾರಿ ರೈತ", dx, dy);
 
-    rows.forEach((row, i) => {
-      const y = startY + i * rowH;
+    ctx.font = "bold 20px Arial";
+    ctx.fillStyle = "#ffffff";
 
-      ctx.fillStyle = "#f6a21a";
-      ctx.fillRect(startX, y, colW1, rowH);
-      ctx.fillRect(startX + colW1, y, colW2, rowH);
+    dy += 50;
+    ctx.fillText(`ರೈತ ಹೆಸರು :- ${name}`, dx, dy);
+    dy += 40;
+    ctx.fillText(`ಮೊಬೈಲ್ :- ${mobile}`, dx, dy);
+    dy += 40;
+    ctx.fillText(`ಗ್ರಾಮ :- ${village}`, dx, dy);
+    dy += 40;
+    ctx.fillText(`ಜಿಲ್ಲೆ :- ${district}`, dx, dy);
 
-      ctx.strokeStyle = "#000";
-      ctx.strokeRect(startX, y, colW1, rowH);
-      ctx.strokeRect(startX + colW1, y, colW2, rowH);
-
-      ctx.fillStyle = "WHITE";
-      ctx.fillText(row[0], startX + 10, y + 40);
-      ctx.fillText(row[1], startX + colW1 + 10, y + 40);
-    });
-
-    /* ===== DATE ===== */
-    const today = new Date().toLocaleDateString("en-GB");
+    /* DATE */
     ctx.font = "bold 22px Arial";
-    ctx.fillText(today, canvas.width - 180, canvas.height - 40);
+    ctx.fillText(
+      new Date().toLocaleDateString("en-GB"),
+      canvas.width - 180,
+      canvas.height - 40
+    );
 
     canvas.style.display = "block";
     downloadBtn.style.display = "block";
@@ -242,7 +234,7 @@ function download() {
     a.href = URL.createObjectURL(blob);
     a.download = `${document.getElementById("name").value}_RESONEX.png`;
     a.click();
-  }, "image/png");
+  });
 }
 </script>
 
