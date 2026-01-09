@@ -48,6 +48,7 @@ button {
 
 canvas {
   width: 100%;
+  max-width: 100%;
   margin-top: 15px;
   display: none;
   border: 3px solid #ccc;
@@ -86,14 +87,22 @@ canvas {
 
 <canvas id="canvas"></canvas>
 
-<button onclick="download()" id="downloadBtn" style="display:none">Download</button>
+<button onclick="downloadImage()" id="downloadBtn" style="display:none">
+Download
+</button>
 
 <script>
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = "high";
+
+/* Load banner safely */
 const banner = new Image();
 banner.src = "BG.png";
+let bannerLoaded = false;
+banner.onload = () => bannerLoaded = true;
 
 const photoBox = { x: 380, y: 170, w: 520, h: 420, r: 30 };
 
@@ -117,6 +126,11 @@ function roundedRect(x, y, w, h, r) {
 
 async function generate() {
 
+  if (!bannerLoaded) {
+    alert("Please wait, loading background...");
+    return;
+  }
+
   const name = document.getElementById("name").value.toUpperCase();
   const mobile = document.getElementById("mobile").value;
   const village = document.getElementById("village").value.toUpperCase();
@@ -137,8 +151,11 @@ async function generate() {
 
   farmerImg.onload = async () => {
 
-    canvas.width = banner.width;
-    canvas.height = banner.height;
+    /* FIXED CANVAS SIZE */
+    canvas.width = banner.naturalWidth;
+    canvas.height = banner.naturalHeight;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(banner, 0, 0);
 
     /* SHADOW CARD */
@@ -157,13 +174,13 @@ async function generate() {
     ctx.clip();
 
     let drawX = farmerImg.width / 2;
-    let drawY = farmerImg.height * 0.35; // safe portrait focus
+    let drawY = farmerImg.height * 0.35;
 
     if ('FaceDetector' in window) {
       try {
         const detector = new FaceDetector({ fastMode: true });
         const faces = await detector.detect(farmerImg);
-        if (faces.length > 0) {
+        if (faces.length) {
           const box = faces[0].boundingBox;
           drawX = box.x + box.width / 2;
           drawY = box.y + box.height / 2;
@@ -186,13 +203,13 @@ async function generate() {
 
     ctx.restore();
 
-    /* WHITE BORDER */
+    /* BORDER */
     ctx.lineWidth = 6;
     ctx.strokeStyle = "#fff";
     roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
     ctx.stroke();
 
-    /* FARMER DETAILS */
+    /* TEXT PANEL */
     const dx = 950;
     let dy = 260;
 
@@ -204,8 +221,7 @@ async function generate() {
     ctx.fillText("ಕ್ರಾಂತಿಕಾರಿ ರೈತ", dx, dy);
 
     ctx.font = "bold 20px Arial";
-    ctx.fillStyle = "#ffffff";
-
+    ctx.fillStyle = "#fff";
     dy += 50;
     ctx.fillText(`ರೈತ ಹೆಸರು :- ${name}`, dx, dy);
     dy += 40;
@@ -228,13 +244,11 @@ async function generate() {
   };
 }
 
-function download() {
-  canvas.toBlob(blob => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${document.getElementById("name").value}_RESONEX.png`;
-    a.click();
-  });
+/* MOBILE SAFE DOWNLOAD */
+function downloadImage() {
+  const dataURL = canvas.toDataURL("image/png");
+  const win = window.open();
+  win.document.write(`<img src="${dataURL}" style="width:100%">`);
 }
 </script>
 
