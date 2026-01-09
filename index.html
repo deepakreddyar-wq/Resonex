@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="kn">
+<head>
+<meta charset="UTF-8">
+<title>Resonex Farmer Photo Booth</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 12px;
+  margin: 0;
+  background-image: url("Background.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+label {
+  font-weight: bold;
+  display: block;
+  margin-top: 10px;
+  text-align: center;
+  color: yellow;
+  font-size: 15px;
+}
+
+input, button {
+  width: 50%;
+  padding: 14px;
+  font-size: 14px;
+  margin: 6px auto;
+  display: block;
+  font-weight: bold;
+}
+
+button {
+  background: #0a7a6a;
+  color: white;
+  border: none;
+  border-radius: 6px;
+}
+
+canvas {
+  width: 100%;
+  margin-top: 15px;
+  display: none;
+  border: 3px solid #ccc;
+}
+</style>
+</head>
+
+<body>
+
+<label>ರೈತರ ಹೆಸರು</label>
+<input id="name">
+
+<label>ಮೊಬೈಲ್ ಸಂಖ್ಯೆ</label>
+<input id="mobile" inputmode="numeric" maxlength="10">
+
+<label>ಗ್ರಾಮ</label>
+<input id="village">
+
+<label>ಜಿಲ್ಲೆ</label>
+<input id="district">
+
+<label>ಫೋಟೋ ಅಪ್‌ಲೋಡ್ / ಕ್ಯಾಮೆರಾ</label>
+<input type="file" id="photo" accept="image/*" capture="environment">
+
+<button onclick="generate()">Preview</button>
+
+<canvas id="canvas"></canvas>
+
+<button onclick="download()" id="downloadBtn" style="display:none">
+Download
+</button>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const banner = new Image();
+banner.src = "Background.png";
+
+/* 🟦 Rounded rectangle photo area */
+const photoBox = {
+  x: 250,
+  y: 180,
+  w: 350,
+  h: 400,
+  r: 30
+};
+
+// Mobile number validation
+document.getElementById("mobile").addEventListener("input", e => {
+  e.target.value = e.target.value.replace(/\D/g, "");
+});
+
+// Rounded rectangle path
+function roundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+async function generate() {
+
+  const name = document.getElementById("name").value.toUpperCase();
+  const mobile = document.getElementById("mobile").value;
+  const village = document.getElementById("village").value.toUpperCase();
+  const district = document.getElementById("district").value.toUpperCase();
+  const file = document.getElementById("photo").files[0];
+
+  if (mobile.length !== 10) {
+    alert("ದಯವಿಟ್ಟು 10 ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ");
+    return;
+  }
+
+  if (!file) {
+    alert("ದಯವಿಟ್ಟು ಫೋಟೋ ಆಯ್ಕೆ ಮಾಡಿ");
+    return;
+  }
+
+  const farmerImg = new Image();
+  farmerImg.src = URL.createObjectURL(file);
+
+  farmerImg.onload = async () => {
+
+    canvas.width = banner.width;
+    canvas.height = banner.height;
+
+    ctx.drawImage(banner, 0, 0);
+
+    /* ===== SHADOW BEHIND PHOTO ===== */
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.35)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 12;
+
+    roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.restore();
+
+    /* ===== PHOTO CLIP ===== */
+    ctx.save();
+    roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
+    ctx.clip();
+
+    let drawX = farmerImg.width / 2;
+    let drawY = farmerImg.height / 2;
+
+    if ('FaceDetector' in window) {
+      try {
+        const detector = new FaceDetector({ fastMode: true });
+        const faces = await detector.detect(farmerImg);
+        if (faces.length > 0) {
+          const box = faces[0].boundingBox;
+          drawX = box.x + box.width / 2;
+          drawY = box.y + box.height / 2;
+        }
+      } catch (e) {}
+    }
+
+    const scale = Math.max(
+      photoBox.w / farmerImg.width,
+      photoBox.h / farmerImg.height
+    );
+
+    ctx.drawImage(
+      farmerImg,
+      photoBox.x + photoBox.w / 2 - drawX * scale,
+      photoBox.y + photoBox.h / 2 - drawY * scale,
+      farmerImg.width * scale,
+      farmerImg.height * scale
+    );
+
+    ctx.restore();
+
+    /* ===== WHITE STROKE BORDER ===== */
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#ffffff";
+    roundedRect(photoBox.x, photoBox.y, photoBox.w, photoBox.h, photoBox.r);
+    ctx.stroke();
+
+    /* ===== ORANGE TABLE ===== */
+    const startX = 700;
+    const startY = 250;
+    const rowH = 60;
+    const colW1 = 230;
+    const colW2 = 300;
+
+    ctx.font = "bold 26px Arial";
+    ctx.lineWidth = 2;
+
+    const rows = [
+      ["FARMER NAME", name],
+      ["MOBILE NO", mobile],
+      ["VILLAGE", village],
+      ["DISTRICT", district]
+    ];
+
+    rows.forEach((row, i) => {
+      const y = startY + i * rowH;
+
+      ctx.fillStyle = "#f6a21a";
+      ctx.fillRect(startX, y, colW1, rowH);
+      ctx.fillRect(startX + colW1, y, colW2, rowH);
+
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(startX, y, colW1, rowH);
+      ctx.strokeRect(startX + colW1, y, colW2, rowH);
+
+      ctx.fillStyle = "WHITE";
+      ctx.fillText(row[0], startX + 10, y + 40);
+      ctx.fillText(row[1], startX + colW1 + 10, y + 40);
+    });
+
+    /* ===== DATE ===== */
+    const today = new Date().toLocaleDateString("en-GB");
+    ctx.font = "bold 22px Arial";
+    ctx.fillText(today, canvas.width - 180, canvas.height - 40);
+
+    canvas.style.display = "block";
+    downloadBtn.style.display = "block";
+  };
+}
+
+function download() {
+  canvas.toBlob(blob => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${document.getElementById("name").value}_RESONEX.png`;
+    a.click();
+  }, "image/png");
+}
+</script>
+
+</body>
+</html>
